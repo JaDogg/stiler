@@ -53,15 +53,15 @@ def initconfig():
     rcfile = os.getenv('HOME') + "/.stilerrc"
 
     config_defaults = {
-        'BottomPadding': '0',
-        'TopPadding': '0',
-        'LeftPadding': '0',
-        'RightPadding': '0',
+        'BottomPadding': '3',
+        'TopPadding': '3',
+        'LeftPadding': '3',
+        'RightPadding': '3',
         'WinTitle': '21',
-        'WinBorder': '1',
-        'MwFactor': '0.65',
+        'WinBorder': '2',
+        'MwFactor': '0.5',
         'Monitors': '2',
-        'GridWidths': '0.33,0.50',
+        'GridWidths': '0.5',
         'WidthAdjustment': '0.0',
         'TempFile': '/tmp/tile_winlist',
         'WindowFilter': 'on',
@@ -638,6 +638,32 @@ def max_all_option():
     arrange(get_max_all(len(winlist)), winlist)
 
 
+def create_desktop(name: str):
+    log.info("Creating a .desktop file for " + name)
+    desktop_file_content = f"""
+    [Desktop Entry]
+    Name=Tiler:{name}
+    Exec=python3 {os.path.abspath(__file__)} {name}
+    Type=Application
+    """.lstrip()
+    filename = f"tiler_op_{name}.desktop"
+    desktop_file_path = os.path.join(os.path.expanduser("~"), ".local/share/applications", filename)
+
+    # Write the content to the .desktop file
+    with open(desktop_file_path, 'w') as desktop_file:
+        desktop_file.write(desktop_file_content)
+    log.info("Created: " + desktop_file_path)
+
+
+def create_desktops_option():
+    """
+    Create .desktop files for all the options
+    """
+    for k, v in globals().items():
+        if k.endswith("_option") and k != "create_desktops_option" and k != "version_option":
+            create_desktop(k.rsplit("_", 1)[0])
+
+
 def h_flag():
     """
     Display usage information
@@ -705,7 +731,7 @@ def initialize_global_variables():
     global MwFactor
     # System Desktop and Screen Information
     global MaxWidth, MaxHeight, OrigX, OrigY, Desktop, WinList, OldWinList
-    # Miscellaneous 
+    # Miscellaneous
     global TempFile, WindowFilter
 
     Config = initconfig()
