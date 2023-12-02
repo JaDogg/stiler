@@ -615,6 +615,16 @@ def cycle_option():
     arrange(get_simple_tile(len(winlist)), winlist)
 
 
+def anticycle_option():
+    """
+    Cycle all the windows in the master pane in reverse
+    """
+    winlist = create_win_list()
+    winlist.insert(len(winlist), winlist[0])
+    winlist = winlist[1:]
+    arrange(get_simple_tile(len(winlist)), winlist)
+
+
 def maximize_option():
     """
     Maximize the active window
@@ -638,13 +648,14 @@ def max_all_option():
     arrange(get_max_all(len(winlist)), winlist)
 
 
-def create_desktop(name: str):
+def create_desktop(name: str, comment: str):
     log.info("Creating a .desktop file for " + name)
     desktop_file_content = f"""
     [Desktop Entry]
     Name=Tiler:{name}
     Exec=python3 {os.path.abspath(__file__)} {name}
     Type=Application
+    Comment=Tiler:{comment}
     """.lstrip()
     filename = f"tiler_op_{name}.desktop"
     desktop_file_path = os.path.join(os.path.expanduser("~"), ".local/share/applications", filename)
@@ -660,8 +671,9 @@ def create_desktops_option():
     Create .desktop files for all the options
     """
     for k, v in globals().items():
-        if k.endswith("_option") and k != "create_desktops_option" and k != "version_option":
-            create_desktop(k.rsplit("_", 1)[0])
+        if (k.endswith("_option")
+                and k != "create_desktops_option" and k != "version_option" and k != "help_option"):
+            create_desktop(k.rsplit("_", 1)[0], v.__doc__.strip())
 
 
 def h_flag():
