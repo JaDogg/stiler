@@ -22,6 +22,7 @@
 
 import configparser as conf
 import logging
+import math
 import os
 import pickle
 import sys
@@ -173,12 +174,12 @@ def get_window_x_y(windowid):
         "+")
 
 
-def store(ob, file):
+def store(ob, file: str):
     with open(file, 'wb+') as f:
         pickle.dump(ob, f)
 
 
-def retrieve(file):
+def retrieve(file: str):
     try:
         with open(file, 'rb+') as f:
             obj = pickle.load(f)
@@ -210,7 +211,16 @@ def get_next_width(current_width, width_array):
     return int((MaxWidth - (WinBorder * 2)) * width_multiplier)
 
 
+def persist_layout(layout_function_name: str):
+    """
+    Persist the last used layout
+    """
+    store({"layout": layout_function_name}, TempFile + "_last_layout")
+    log.info("Persisted last used layout: " + layout_function_name)
+
+
 def get_simple_tile(wincount):
+    persist_layout("get_simple_tile")
     rows = wincount - 1
     layout = []
     if rows == 0:
@@ -230,7 +240,30 @@ def get_simple_tile(wincount):
     return layout
 
 
+def get_column_tile(wincount):
+    persist_layout("get_column_tile")
+    columns = wincount - 1
+    layout = []
+    if columns == 0:
+        layout.append((OrigX, OrigY, MaxWidth, MaxHeight - WinTitle - WinBorder))
+        return layout
+    else:
+        layout.append((OrigX, OrigY, int(MaxWidth * MwFactor), MaxHeight - WinTitle - WinBorder))
+
+    x0 = OrigX + int((MaxWidth * MwFactor) + (2 * WinBorder))
+    y = OrigY
+    height = int(MaxHeight - WinBorder - WinTitle)
+    width = int((MaxWidth * (1 - MwFactor)) / columns - 2 * WinBorder)
+
+    for n in range(0, columns):
+        x = x0 + (width + WinBorder) * n
+        layout.append((x, y, width, height))
+
+    return layout
+
+
 def get_vertical_tile(wincount):
+    persist_layout("get_vertical_tile")
     layout = []
     y = OrigY
     width = int(MaxWidth / wincount)
@@ -243,6 +276,7 @@ def get_vertical_tile(wincount):
 
 
 def get_horiz_tile(wincount):
+    persist_layout("get_horiz_tile")
     layout = []
     x = OrigX
     height = int(MaxHeight / wincount - WinTitle - WinBorder)
@@ -252,6 +286,15 @@ def get_horiz_tile(wincount):
         layout.append((x, y, width, height))
 
     return layout
+
+
+def retrieve_last_used_layout():
+    fnc = retrieve(TempFile + "_last_layout").get("layout", "get_simple_tile")
+    log.info("Retrieved last used layout: " + fnc)
+    for key, value in globals().items():
+        if key == fnc and callable(value):
+            return value
+    return get_simple_tile
 
 
 def get_max_all(wincount):
@@ -530,6 +573,14 @@ def simple_option():
     arrange(get_simple_tile(len(Windows)), Windows)
 
 
+def simple_col_option():
+    """
+    The basic tiling layout . 1 Main + all other at the side (*Column).
+    """
+    Windows = create_win_list()
+    arrange(get_column_tile(len(Windows)), Windows)
+
+
 def swap_windows(window1, window2):
     """
     Swap window1 and window2
@@ -580,7 +631,7 @@ def swap_option():
     active = get_active_window()
     winlist.remove(active)
     winlist.insert(0, active)
-    arrange(get_simple_tile(len(winlist)), winlist)
+    arrange(retrieve_last_used_layout()(len(winlist)), winlist)
 
 
 def vertical_option():
@@ -612,7 +663,7 @@ def cycle_option():
     winlist = create_win_list()
     winlist.insert(0, winlist[len(winlist) - 1])
     winlist = winlist[:-1]
-    arrange(get_simple_tile(len(winlist)), winlist)
+    arrange(retrieve_last_used_layout()(len(winlist)), winlist)
 
 
 def anticycle_option():
@@ -622,7 +673,7 @@ def anticycle_option():
     winlist = create_win_list()
     winlist.insert(len(winlist), winlist[0])
     winlist = winlist[1:]
-    arrange(get_simple_tile(len(winlist)), winlist)
+    arrange(retrieve_last_used_layout()(len(winlist)), winlist)
 
 
 def maximize_option():
