@@ -22,7 +22,6 @@
 
 import configparser as conf
 import logging
-import math
 import os
 import pickle
 import sys
