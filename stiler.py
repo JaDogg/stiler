@@ -31,10 +31,46 @@ from subprocess import check_output, check_call, CalledProcessError
 PROGRAM_NAME = "Simple Window Tiler"
 PROGRAM_VERSION = "0.3"
 PROGRAM_SOURCE = "https://github.com/JaDogg/stiler"
+BANNER = """
+━━━━━━━━━━━━━━━━━━━━━━━━
+┏┓  ┏┳┓  ┓        ┏┓ ┏┓ 
+┗┓━━ ┃ ┓┏┃┏┓┏┓  ┓┏ ┫ ┃┫ 
+┗┛   ┻ ┗┫┗┗ ┛   ┗┛┗┛•┗┛ 
+        ┛               
+  Simple Window Tiler
+━━━━━━━━━━━━━━━━━━━━━━━━
+""".strip()
 
-logging.basicConfig(level=logging.WARN)
-log = logging.getLogger()
-log.name = PROGRAM_NAME
+
+class CustomFormatter(logging.Formatter):
+    grey = "\x1b[38;20m"
+    yellow = "\x1b[33;20m"
+    red = "\x1b[31;20m"
+    cyan = "\x1b[36;20m"
+    bold_red = "\x1b[31;1m"
+    reset = "\x1b[0m"
+    format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
+
+    FORMATS = {
+        logging.DEBUG: grey + format + reset,
+        logging.INFO: cyan + format + reset,
+        logging.WARNING: yellow + format + reset,
+        logging.ERROR: red + format + reset,
+        logging.CRITICAL: bold_red + format + reset
+    }
+
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt)
+        return formatter.format(record)
+
+
+log = logging.getLogger(PROGRAM_NAME)
+log.setLevel(logging.INFO)
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+ch.setFormatter(CustomFormatter())
+log.addHandler(ch)
 
 
 def get_output(cmd): return check_output(cmd, shell=True).decode('utf-8').strip()
@@ -71,9 +107,8 @@ def initconfig():
 
     if not os.path.exists(rcfile):
         log.info("writing new config file to " + rcfile)
-        cfg = open(rcfile, 'w')
-        config.write(cfg)
-        cfg.close()
+        with open(rcfile, 'w+') as cfg:
+            config.write(cfg)
 
     config.read(rcfile)
     return config
@@ -88,22 +123,16 @@ def version_option():
 
 def v_flag():
     """
-    Enable INFO level verbosity
-    """
-    log.setLevel(logging.INFO)
-
-
-def vv_flag():
-    """
     Enable DEBUG level verbosity
     """
     log.setLevel(logging.DEBUG)
-
+    ch.setLevel(logging.DEBUG)
 
 def has_required_programs(program_list):
     success = True
     for program in program_list:
         try:
+            log.info("checking for " + program)
             check_call("which " + program, shell=True)
         except CalledProcessError as _:
             log.error(program + " is required by " + PROGRAM_NAME)
@@ -115,12 +144,9 @@ def has_required_programs(program_list):
 def is_valid_window(window):
     if WindowFilter:
         window_type = get_output("xprop -id " + window + " _NET_WM_WINDOW_TYPE | cut -d_ -f10").split("\n")[0]
-        window_state = \
-            get_output("xprop -id " + window + " WM_STATE | grep \"window state\" | cut -d: -f2").split("\n")[
-                0].lstrip()
-
-        logging.debug("%s is type %s, state %s" % (window, window_type, window_state))
-
+        window_state = get_output("xprop -id " + window +
+                                  " WM_STATE | grep \"window state\" | cut -d: -f2").split("\n")[0].lstrip()
+        log.debug("%s is type %s, state %s" % (window, window_type, window_state))
         if window_type == "UTILITY" or window_type == "DESKTOP" or window_state == "Iconic" or window_type == "DOCK":
             return False
 
@@ -145,13 +171,13 @@ def initialize():
     for desk in desk_list:
         win_list[desk] = lmap(lambda y: hex(int(y.split()[0], 16)), lfilter(lambda x: x.split()[1] == desk, win_output))
 
-    return (desktop, orig_x, orig_y, width, height, win_list)
+    return desktop, orig_x, orig_y, width, height, win_list
 
 
 def get_active_window():
     active = get_output("xprop -root _NET_ACTIVE_WINDOW | cut -d' ' -f5 | cut -d',' -f1")
     if is_valid_window(active):
-        logging.debug("obtained active window: '" + str(active) + "'")
+        log.debug("obtained active window: '" + str(active) + "'")
         return active
     else:
         return 0
@@ -161,16 +187,15 @@ def get_window_width_height(window_id):
     """
     return the given window's [width, height]
     """
-    return get_output(
-        " xwininfo -id " + window_id + " | egrep \"Height|Width\" | cut -d: -f2 | tr -d \" \"").split("\n")
+    return get_output(" xwininfo -id " + window_id + " | egrep \"Height|Width\" | cut -d: -f2 | tr -d \" \"").split(
+        "\n")
 
 
 def get_window_x_y(windowid):
     """
     return the given window's [x,y] position
     """
-    return get_output("xwininfo -id " + windowid + " | grep 'Corners' | cut -d' ' -f5 | cut -d'+' -f2,3").split(
-        "+")
+    return get_output("xwininfo -id " + windowid + " | grep 'Corners' | cut -d' ' -f5 | cut -d'+' -f2,3").split("+")
 
 
 def store(ob, file: str):
@@ -183,7 +208,7 @@ def retrieve(file: str):
         with open(file, 'rb+') as f:
             obj = pickle.load(f)
         return obj
-    except (OSError, IOError) as _:
+    except (OSError, IOError, EOFError) as _:
         with open(file, 'wb+'):
             pass
         dc = {}
@@ -233,7 +258,7 @@ def get_simple_tile(wincount):
     height = int(MaxHeight / rows - WinTitle - WinBorder)
 
     for n in range(0, rows):
-        y = OrigY + int((MaxHeight / rows) * (n))
+        y = OrigY + int((MaxHeight / rows) * n)
         layout.append((x, y, width, height))
 
     return layout
@@ -281,7 +306,7 @@ def get_horiz_tile(wincount):
     height = int(MaxHeight / wincount - WinTitle - WinBorder)
     width = MaxWidth
     for n in range(0, wincount):
-        y = OrigY + int((MaxHeight / wincount) * (n))
+        y = OrigY + int((MaxHeight / wincount) * n)
         layout.append((x, y, width, height))
 
     return layout
@@ -320,7 +345,7 @@ def move_window(windowid, PosX, PosY, Width, Height):
     PosX = int(PosX)
     PosY = int(PosY)
 
-    logging.debug("moving window: %s to (%s,%s,%s,%s) " % (windowid, PosX, PosY, Width, Height))
+    log.debug("moving window: %s to (%s,%s,%s,%s) " % (windowid, PosX, PosY, Width, Height))
 
     if windowid == ":ACTIVE:":
         window = "-r " + windowid
@@ -702,15 +727,15 @@ def create_desktop(name: str, comment: str):
     log.info("Creating a .desktop file for " + name)
     desktop_file_content = f"""
     [Desktop Entry]
-    Name=Tiler:{name}
+    Name=🖥️✏️ [Styler] {name}
     Exec=python3 {os.path.abspath(__file__)} {name}
     Type=Application
-    Comment=Tiler:{comment}
-    """.lstrip()
+    Comment={comment}
+    GenericName={comment}
+    """
+    desktop_file_content = "\n".join(desktop_file_content.strip().splitlines(keepends=False)) + "\n"
     filename = f"tiler_op_{name}.desktop"
     desktop_file_path = os.path.join(os.path.expanduser("~"), ".local/share/applications", filename)
-
-    # Write the content to the .desktop file
     with open(desktop_file_path, 'w') as desktop_file:
         desktop_file.write(desktop_file_content)
     log.info("Created: " + desktop_file_path)
@@ -722,7 +747,9 @@ def create_desktops_option():
     """
     for k, v in globals().items():
         if (k.endswith("_option")
-                and k != "create_desktops_option" and k != "version_option" and k != "help_option"):
+                and k != "create_desktops_option"
+                and k != "version_option"
+                and k != "help_option"):
             create_desktop(k.rsplit("_", 1)[0], v.__doc__.strip())
 
 
@@ -837,8 +864,8 @@ def initialize_global_variables():
     CORNER_WIDTHS = lmap(lambda y: round(y / Monitors, 2) + WidthAdjustment, CORNER_WIDTHS)
     CENTER_WIDTHS = lmap(lambda y: round(y / Monitors, 2) + WidthAdjustment, CENTER_WIDTHS)
 
-    logging.debug("corner widths: %s" % CORNER_WIDTHS)
-    logging.debug("center widths: %s" % CENTER_WIDTHS)
+    log.debug("corner widths: %s" % CORNER_WIDTHS)
+    log.debug("center widths: %s" % CENTER_WIDTHS)
 
     (Desktop, OrigXstr, OrigYstr, MaxWidthStr, MaxHeightStr, WinList) = initialize()
     MaxWidth = int(MaxWidthStr) - LeftPadding - RightPadding
@@ -849,30 +876,23 @@ def initialize_global_variables():
 
 
 def main():
-    """
-    Determine what needs to be done.
-    """
-
-    # we need options!
+    print(BANNER)
     if len(sys.argv) == 1:
         help_option()
         sys.exit(1)
 
-    # check and set any flags passed from the command line
     for arg in sys.argv:
         if arg == sys.argv[0]:
             continue
         elif arg.startswith("-"):
             eval_function(arg.split("-")[1] + "_flag")
 
-    # check to see if the system has all the required programs
     required_programs = ["wmctrl", "xprop", "xwininfo", "egrep", "grep"]
     if not has_required_programs(required_programs):
         sys.exit(1)
 
     initialize_global_variables()
 
-    # parse the args to determine what should be done
     for arg in sys.argv:
         if arg == sys.argv[0]:
             continue
