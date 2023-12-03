@@ -33,10 +33,9 @@ PROGRAM_VERSION = "0.3"
 PROGRAM_SOURCE = "https://github.com/JaDogg/stiler"
 BANNER = """
 ━━━━━━━━━━━━━━━━━━━━━━━━
-┏┓  ┏┳┓  ┓        ┏┓ ┏┓ 
-┗┓━━ ┃ ┓┏┃┏┓┏┓  ┓┏ ┫ ┃┫ 
-┗┛   ┻ ┗┫┗┗ ┛   ┗┛┗┛•┗┛ 
-        ┛               
+┏┓  ┏┳┓•┓        ┏┓ ┏┓
+┗┓━━ ┃ ┓┃┏┓┏┓  ┓┏ ┫ ┃┫
+┗┛   ┻ ┗┗┗ ┛   ┗┛┗┛•┗┛
   Simple Window Tiler
 ━━━━━━━━━━━━━━━━━━━━━━━━
 """.strip()
@@ -750,7 +749,7 @@ def create_desktop(name: str, comment: str):
     log.info("Creating a .desktop file for " + name)
     desktop_file_content = f"""
     [Desktop Entry]
-    Name=🖥️✏️ [Styler] {name}
+    Name=🖥️✏️ [Stiler] {name}
     Exec=python3 {os.path.abspath(__file__)} {name}
     Type=Application
     Comment={comment}
