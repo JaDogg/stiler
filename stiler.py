@@ -42,26 +42,48 @@ BANNER = """
 """.strip()
 
 
-class CustomFormatter(logging.Formatter):
-    grey = "\x1b[38;20m"
-    yellow = "\x1b[33;20m"
-    red = "\x1b[31;20m"
-    cyan = "\x1b[36;20m"
-    bold_red = "\x1b[31;1m"
-    reset = "\x1b[0m"
-    format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
+# Reference: https://stackoverflow.com/a/70796089
+class Color:
+    """A class for terminal color codes."""
 
-    FORMATS = {
-        logging.DEBUG: grey + format + reset,
-        logging.INFO: cyan + format + reset,
-        logging.WARNING: yellow + format + reset,
-        logging.ERROR: red + format + reset,
-        logging.CRITICAL: bold_red + format + reset
+    BOLD = "\033[1m"
+    BLUE = "\033[94m"
+    WHITE = "\033[97m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    RED = "\033[91m"
+    CYAN = "\033[96m"
+    BOLD_WHITE = BOLD + WHITE
+    BOLD_BLUE = BOLD + BLUE
+    BOLD_GREEN = BOLD + GREEN
+    BOLD_YELLOW = BOLD + YELLOW
+    BOLD_RED = BOLD + RED
+    END = "\033[0m"
+
+
+class ColorLogFormatter(logging.Formatter):
+    """A class for formatting colored logs."""
+
+    FORMAT = "%(prefix)s%(msg)s%(suffix)s"
+
+    LOG_LEVEL_COLOR = {
+        "DEBUG": {'prefix': '🐛', 'suffix': ''},
+        "INFO": {'prefix': '👉' + Color.CYAN, 'suffix': Color.END},
+        "WARNING": {'prefix': '⚠️' + Color.BOLD_YELLOW, 'suffix': Color.END},
+        "ERROR": {'prefix': '🛑' + Color.BOLD_RED, 'suffix': Color.END},
+        "CRITICAL": {'prefix': '🛑🛑' + Color.BOLD_RED, 'suffix': Color.END},
     }
 
     def format(self, record):
-        log_fmt = self.FORMATS.get(record.levelno)
-        formatter = logging.Formatter(log_fmt)
+        """Format log records with a default prefix and suffix to terminal color codes that corresponds to the log
+        level name."""
+        if not hasattr(record, 'prefix'):
+            record.prefix = self.LOG_LEVEL_COLOR.get(record.levelname.upper()).get('prefix')
+
+        if not hasattr(record, 'suffix'):
+            record.suffix = self.LOG_LEVEL_COLOR.get(record.levelname.upper()).get('suffix')
+
+        formatter = logging.Formatter(self.FORMAT)
         return formatter.format(record)
 
 
@@ -69,7 +91,7 @@ log = logging.getLogger(PROGRAM_NAME)
 log.setLevel(logging.INFO)
 ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
-ch.setFormatter(CustomFormatter())
+ch.setFormatter(ColorLogFormatter())
 log.addHandler(ch)
 
 
@@ -127,6 +149,7 @@ def v_flag():
     """
     log.setLevel(logging.DEBUG)
     ch.setLevel(logging.DEBUG)
+
 
 def has_required_programs(program_list):
     success = True
