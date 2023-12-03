@@ -4,7 +4,7 @@
 # Copyright (c) 2009   unohu <unohu0@gmail.com> and Contributors           #
 #                                                                          #
 # Contributors: John Elkins <soulfx@yahoo.com>                             #
-# Contributors: Bhathiya Perera (JaDogg)                                     #
+# Contributors: Bhathiya Perera (JaDogg)                                   #
 #                                                                          #
 # Permission to use, copy, modify, and/or distribute this software for any #
 # purpose with or without fee is hereby granted, provided that the above   #
