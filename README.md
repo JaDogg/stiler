@@ -59,8 +59,8 @@ The two most influential values are the `winborder` and `wintitle` values.
 
 ## Flags
 
--v - Enable DEBUG level verbosity
--h - Display usage information
+* -v - Enable DEBUG level verbosity
+* -h - Display usage information
 
 # Options
 
