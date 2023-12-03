@@ -24,6 +24,8 @@ Simple Window Tiler
 
 Usage: `stiler.py layout_option [flags]`
 
+You can use `./styler create_destops` to create .desktop files for layout commands. (For using with `rofi drun`)
+
 ## Put everything in to layout
 
 * simple - The basic tiling layout . 1 Main + all other at the side.
